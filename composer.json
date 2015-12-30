@@ -1,0 +1,26 @@
+{
+    "name": "kijtra/db",
+    "description": "Simple PDO helper",
+    "type": "library",
+    "keywords": ["PHP", "PDO", "DB", "Helper"],
+    "homepage": "https://github.com/kijtra/db",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "kijtra",
+            "email": "kijtra@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3"
+    },
+    "suggest": {
+        "kijtra/Config": "Simple PDO helper"
+    },
+    "autoload": {
+        "files": ["src/functions.php"],
+        "psr-4": {
+            "Kijtra\\": "src/"
+        }
+    }
+}
