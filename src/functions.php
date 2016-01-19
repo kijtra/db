@@ -3,6 +3,7 @@ namespace Kijtra;
 
 function db() {
     static $instance = null;
+    
     if (null === $instance) {
         $ref = new \ReflectionClass(__NAMESPACE__.'\\DB');
         $instance = $ref->newInstanceArgs(func_get_args());
@@ -12,5 +13,6 @@ function db() {
             $instance->exec("USE `{$args[0]}`;");
         }
     }
+
     return $instance;
 }
