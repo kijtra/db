@@ -138,7 +138,8 @@ class Config implements \ArrayAccess
         return $this->container;
     }
 
-    public function offsetSet($offset, $value) {
+    public function offsetSet($offset, $value)
+    {
         if (array_key_exists($offset, $this->container)) {
             $this->container[$offset] = $value;
         } elseif(!empty($offset)) {
@@ -162,15 +163,23 @@ class Config implements \ArrayAccess
         }
     }
 
-    public function offsetExists($offset) {
+    public function offsetExists($offset)
+    {
         return isset($this->container[$offset]);
     }
 
-    public function offsetUnset($offset) {
+    public function offsetUnset($offset)
+    {
         $this->container[$offset] = null;
     }
 
-    public function offsetGet($offset) {
+    public function offsetGet($offset)
+    {
         return isset($this->container[$offset]) ? $this->container[$offset] : null;
+    }
+
+    public function __debugInfo()
+    {
+        return $this->container;
     }
 }

@@ -22,4 +22,9 @@ class History
     {
         return $this->history;
     }
+
+    public function __debugInfo()
+    {
+        return $this->history;
+    }
 }

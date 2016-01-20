@@ -24,16 +24,22 @@ class Statement extends \PDOStatement
         return parent::bindValue($param, $value, $type);
     }
 
-    public function execute($values = array())
+    public function execute($values = array(), $noLog = false)
     {
         $binds = $this->binds;
         $this->binds = array();
 
         if (!empty($values)) {
-            $this->history->set($this->queryString, $values);
+            if (!$noLog) {
+                $this->history->set($this->queryString, $values);
+            }
+
             return parent::execute($values);
         } else {
-            $this->history->set($this->queryString, $binds);
+            if (!$noLog) {
+                $this->history->set($this->queryString, $binds);
+            }
+            
             return parent::execute();
         }
     }
