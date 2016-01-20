@@ -4,6 +4,7 @@ namespace Kijtra;
 class DB
 {
     private $config;
+    private $tables = array();
 
     public function __construct($dsn, $username = null, $password = null, $options = null)
     {
@@ -40,6 +41,33 @@ class DB
         return $this->history->get();
     }
 
+    public function column($tableName)
+    {
+        if (!empty($this->tables[$tableName])) {
+            return $this->tables[$tableName];
+        }
+
+        try {
+            return $this->tables[$tableName] = new DB\Column($tableName, $this->db);
+        } catch(\PDOException $e) {
+            throw $e;
+        } catch(\Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function columnInfo($tableName)
+    {
+        $column = $this->column($tableName);
+        return $column->getRaw();
+    }
+
+    public function table($tableName)
+    {
+        $column = $this->column($tableName);
+        return $column->getTable();
+    }
+
     public function __call($method, $args)
     {
         $len = count($args);
@@ -58,5 +86,10 @@ class DB
         } else {
             return call_user_func_array(array($this->db, $method), $args);
         }
+    }
+
+    public function __debugInfo()
+    {
+        return $this->db;
     }
 }

@@ -32,18 +32,18 @@ class Connection extends \PDO
         parent::__construct($dsn, $user, $pass, $options);
     }
 
-    public function exec($query)
+    public function exec($query, $noLog = false)
     {
-        if (isset($this->history)) {
+        if (!$noLog && isset($this->history)) {
             $this->history->set($query);
         }
 
         return parent::exec($query);
     }
 
-    public function query($query)
+    public function query($query, $noLog = false)
     {
-        if (isset($this->history)) {
+        if (!$noLog && isset($this->history)) {
             $this->history->set($query);
         }
 
