@@ -6,6 +6,8 @@ class DB
     private $config;
     private $tables = array();
 
+    private static $singleton;
+
     public function __construct($dsn, $username = null, $password = null, $options = null)
     {
         $this->history = new DB\History();
@@ -66,6 +68,21 @@ class DB
     {
         $column = $this->column($tableName);
         return $column->getTable();
+    }
+
+    public static function single()
+    {
+        if (null === self::$singleton) {
+            $ref = new \ReflectionClass(__CLASS__);
+            self::$singleton = $ref->newInstanceArgs(func_get_args());
+        } elseif(1 === func_num_args()) {
+            $args = func_get_args();
+            if (is_string($args[0])) {
+                self::$singleton->exec("USE `{$args[0]}`;");
+            }
+        }
+
+        return self::$singleton;
     }
 
     public function __call($method, $args)
