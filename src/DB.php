@@ -3,6 +3,7 @@ namespace Kijtra;
 
 class DB
 {
+    private $history;
     private $config;
     private $tables = array();
 

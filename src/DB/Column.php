@@ -1,7 +1,7 @@
 <?php
 namespace Kijtra\DB;
 
-class Column implements \ArrayAccess
+class Column implements \ArrayAccess, \IteratorAggregate
 {
     private $db;
     private $tableName;
@@ -282,6 +282,11 @@ class Column implements \ArrayAccess
     public function offsetGet($offset)
     {
         return isset($this->columns[$offset]) ? $this->columns[$offset] : null;
+    }
+
+    function getIterator()
+    {
+        return new \ArrayIterator($this->columns);
     }
 
     public function __debugInfo()
