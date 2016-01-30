@@ -25,6 +25,7 @@ class DB implements Constant
             $this->config['user'],
             $this->config['pass'],
             $options,
+            $this->config,
             $this->history
         );
 
@@ -52,15 +53,19 @@ class DB implements Constant
 
     public function table($name)
     {
+        $dbname = $this->config['name'];
         if (!empty($this->tables[$name])) {
             return $this->tables[$name];
+        } elseif (!empty($this->tables[$dbname.$name])) {
+            return $this->tables[$dbname.$name];
         }
 
         $reflection = new \ReflectionClass(self::CLASS_TABLE);
         $instance = $reflection->newInstanceWithoutConstructor();
         $instance->{self::PROP_CONN} = $this->{self::PROP_CONN};
         $instance->__construct($name);
-        return $this->tables[$name] = $instance;
+        $name = $instance->name();
+        return $this->tables[$dbname.$name] = $instance;
     }
 
     public function columns($name)
@@ -83,12 +88,6 @@ class DB implements Constant
         return self::$singleton;
     }
 
-
-    // public function __get($tableName)
-    // {
-    //     return $this->table($tableName);
-    // }
-
     public function __call($method, $args)
     {
         $len = count($args);
@@ -109,8 +108,8 @@ class DB implements Constant
         }
     }
 
-    // public function __debugInfo()
-    // {
-    //     return $this->conn;
-    // }
+    public function __debugInfo()
+    {
+        return $this->conn;
+    }
 }

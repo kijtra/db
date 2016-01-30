@@ -11,13 +11,23 @@ class Connection extends \PDO
         \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
     );
 
+    public $config;
     private $history;
 
-    public function __construct($dsn, $user = null, $pass = null, $options = null, $history = null)
+    public function __construct(
+        $dsn,
+        $user = null,
+        $pass = null,
+        $options = null,
+        $config = null,
+        $history = null
+    )
     {
         if (empty($options) || !is_array($options)) {
             $options = $this->options;
         }
+
+        $this->config = $config;
 
         $classHistory = Constant::CLASS_HISTORY;
         if ($history instanceof $classHistory) {

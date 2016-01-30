@@ -14,6 +14,7 @@ use \Kijtra\DB\Container\Columns;
 class Table extends Base
 {
     private $name;
+    private $queryName;
     private $columns = array();
 
     private $values = array();
@@ -23,6 +24,7 @@ class Table extends Base
     public function __construct($name)
     {
         $conn = $this->{Constant::PROP_CONN};
+        $config = $conn->config;
         $classConnection = Constant::CLASS_CONNECTION;
 
         if (!($conn instanceof $classConnection)) {
@@ -31,10 +33,23 @@ class Table extends Base
             throw new \Exception('Table name is not string.');
         }
 
-        $this->name = $name;
+        $dbName = $config['name'];
+        $tableName = str_replace(array("'", "`"), '', $name);
+        $tableName = explode('.', $tableName);
+        if (!empty($tableName[1])) {
+            $dbName = $tableName[0];
+            $tableName = $tableName[1];
+        } else {
+            $tableName = $tableName[0];
+        }
+
+        $this->name = $tableName;
+        $this->queryName  = "`".trim($conn->quote($dbName), "'")."`.";
+        $this->queryName .= "`".trim($conn->quote($tableName), "'")."`";
 
         try {
-            $sql = "SHOW TABLE STATUS LIKE ?;";
+            $sql  = "SHOW TABLE STATUS FROM ";
+            $sql .= "`".trim($conn->quote($dbName), "'")."` LIKE ?;";
             $stmt = $conn->prepare($sql);
             if ($stmt->execute(array($this->name), true)) {
                 $raw = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -81,10 +96,10 @@ class Table extends Base
 
                 $this->data = $data;
 
-                $sql = "SHOW FULL COLUMNS FROM `".trim($conn->quote($this->name), "'`")."`;";
+                $sql  = "SHOW FULL COLUMNS FROM ".$this->queryName.";";
                 if ($query = $conn->query($sql, true)) {
                     if (!$query->rowCount()) {
-                        throw new \Exception(sprintf('Table "%s" has no columns.', $this->name));
+                        throw new \Exception(sprintf('Table "%s" has no columns.', $tableName));
                     }
 
                     $columnClass = Constant::CLASS_COLUMN;
@@ -119,6 +134,11 @@ class Table extends Base
     public function name()
     {
         return $this->name;
+    }
+
+    public function qname()
+    {
+        return $this->queryName;
     }
 
     public function columns($key = null)

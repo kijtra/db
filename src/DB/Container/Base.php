@@ -51,7 +51,9 @@ class Base implements Constant, \ArrayAccess, \IteratorAggregate
     {
         if (!empty($value)) {
             $value = strtolower($value);
-            return substr($value, 0, strpos($value, '_'));
+            $charset = substr($value, 0, strpos($value, '_'));
+            $charset = str_replace('mb4', '', $charset);
+            return $charset;
         }
     }
 
