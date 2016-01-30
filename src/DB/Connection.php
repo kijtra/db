@@ -1,7 +1,7 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Constant;
+use \Kijtra\DB\History;
 
 class Connection extends \PDO
 {
@@ -29,8 +29,7 @@ class Connection extends \PDO
 
         $this->config = $config;
 
-        $classHistory = Constant::CLASS_HISTORY;
-        if ($history instanceof $classHistory) {
+        if ($history instanceof History) {
             $this->history = $history;
         }
 

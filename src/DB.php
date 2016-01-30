@@ -1,13 +1,12 @@
 <?php
 namespace Kijtra;
 
-use \Kijtra\DB\Constant;
 use \Kijtra\DB\History;
 use \Kijtra\DB\Config;
 use \Kijtra\DB\Connection;
-use \Kijtra\DB\Container\Table;
+use \Kijtra\DB\Table;
 
-class DB implements Constant
+class DB
 {
     private $history;
     private $config;
@@ -20,7 +19,7 @@ class DB implements Constant
     {
         $this->history = new History();
         $this->config = new Config($dsn, $username, $password);
-        $this->{self::PROP_CONN} = new Connection(
+        $this->conn = new Connection(
             $this->config['dsn'],
             $this->config['user'],
             $this->config['pass'],
@@ -29,8 +28,8 @@ class DB implements Constant
             $this->history
         );
 
-        $this->{self::PROP_CONN}->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
-            self::CLASS_STATEMENT,
+        $this->conn->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
+            __NAMESPACE__.'\\DB\\Statement',
             array($this->history)
         ));
     }

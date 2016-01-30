@@ -1,16 +1,9 @@
 <?php
-namespace Kijtra\DB\Container;
+namespace Kijtra\DB;
 
-/**
- * follow PSR-11 Container interface
- * https://github.com/container-interop/fig-standards/blob/master/proposed/container.md
- */
+use \Kijtra\DB\Table;
 
-use \Kijtra\DB\Constant;
-use \Kijtra\DB\Connection;
-use \Kijtra\DB\Container\Table;
-
-class Column implements Constant, \ArrayAccess, \IteratorAggregate
+class Column implements \ArrayAccess, \IteratorAggregate
 {
     private $table;
 
@@ -19,8 +12,7 @@ class Column implements Constant, \ArrayAccess, \IteratorAggregate
 
     public function __construct($table, $raw)
     {
-        $classTable = Constant::CLASS_TABLE;
-        if(!($table instanceof $classTable)) {
+        if(!($table instanceof Table)) {
             throw new \Exception('Table is not object.');
         }
 

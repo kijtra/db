@@ -1,8 +1,6 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Constant;
-
 class Config implements \ArrayAccess
 {
     private $container = array(
@@ -101,11 +99,11 @@ class Config implements \ArrayAccess
 
         if ('mysql' == $this->container['scheme'] || 'pgsql' == $this->container['scheme']) {
             if (empty($this->container['host'])) {
-                $this->container['host'] = Constant::DEFAULT_HOST;
+                $this->container['host'] = 'localhost';
             }
 
             if (empty($this->container['charset'])) {
-                $this->container['charset'] = Constant::DEFAULT_CHARSET;
+                $this->container['charset'] = 'utf8';
             }
 
             if (empty($this->container['port'])) {

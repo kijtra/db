@@ -1,23 +1,16 @@
 <?php
-namespace Kijtra\DB\Container;
+namespace Kijtra\DB;
 
-/**
- * follow PSR-11 Container interface
- * https://github.com/container-interop/fig-standards/blob/master/proposed/container.md
- */
-
-use \Kijtra\DB\Constant;
 use \Kijtra\DB\Connection;
-use \Kijtra\DB\Container\Column;
+use \Kijtra\DB\Column;
 
-class Table implements Constant, \ArrayAccess, \IteratorAggregate
+class Table implements \ArrayAccess, \IteratorAggregate
 {
-    private $conn;
-    private $raw = array();
-    private $data = array();
-
     private $name;
     private $queryName;
+
+    private $raw = array();
+    private $data = array();
     private $columns = array();
 
     private $values = array();
@@ -26,8 +19,7 @@ class Table implements Constant, \ArrayAccess, \IteratorAggregate
 
     public function __construct($name, $conn)
     {
-        $classConnection = Constant::CLASS_CONNECTION;
-        if (!($conn instanceof $classConnection)) {
+        if (!($conn instanceof Connection)) {
             throw new \Exception('Database not connected.');
         } elseif(!is_string($name)) {
             throw new \Exception('Table name is not string.');
@@ -104,10 +96,9 @@ class Table implements Constant, \ArrayAccess, \IteratorAggregate
                         throw new \Exception(sprintf('Table "%s" has no columns.', $tableName));
                     }
 
-                    $columnClass = Constant::CLASS_COLUMN;
                     $requires = $primaries = $indicies = array();
                     while($val = $query->fetch(\PDO::FETCH_ASSOC)) {
-                        $column = new $columnClass($this, $val);
+                        $column = new Column($this, $val);
                         $this->columns[$column['name']] = $column;
 
                         if ($column['require']) {

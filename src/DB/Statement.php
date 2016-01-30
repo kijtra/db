@@ -1,7 +1,7 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Constant;
+use \Kijtra\DB\History;
 
 // http://stackoverflow.com/a/7716896/3101326
 class Statement extends \PDOStatement
@@ -11,8 +11,7 @@ class Statement extends \PDOStatement
 
     protected function __construct($history = null)
     {
-        $classHistory = Constant::CLASS_HISTORY;
-        if ($history instanceof $classHistory) {
+        if ($history instanceof History) {
             $this->history = $history;
         }
     }
