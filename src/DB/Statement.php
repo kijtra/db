@@ -4,14 +4,14 @@ namespace Kijtra\DB;
 use \Kijtra\DB\Constant;
 
 // http://stackoverflow.com/a/7716896/3101326
-class Statement extends \PDOStatement implements Constant
+class Statement extends \PDOStatement
 {
     private $history;
     private $binds = array();
 
     protected function __construct($history = null)
     {
-        $classHistory = self::CLASS_HISTORY;
+        $classHistory = Constant::CLASS_HISTORY;
         if ($history instanceof $classHistory) {
             $this->history = $history;
         }

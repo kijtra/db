@@ -6,9 +6,10 @@ namespace Kijtra\DB\Container;
  * https://github.com/container-interop/fig-standards/blob/master/proposed/container.md
  */
 
- use \Kijtra\DB\Connection;
- use \Kijtra\DB\Container\Base;
- use \Kijtra\DB\Container\Table;
+use \Kijtra\DB\Constant;
+use \Kijtra\DB\Connection;
+use \Kijtra\DB\Container\Base;
+use \Kijtra\DB\Container\Table;
 
 class Column extends Base
 {
@@ -16,7 +17,7 @@ class Column extends Base
 
     public function __construct($table, $raw)
     {
-        $classTable = self::CLASS_TABLE;
+        $classTable = Constant::CLASS_TABLE;
         if(!($table instanceof $classTable)) {
             throw new \Exception('Table is not object.');
         }
@@ -30,9 +31,18 @@ class Column extends Base
         $this->format($raw);
     }
 
-    public function table()
+    public function table($key = null)
     {
-        return $this->table;
+        if (empty($key)) {
+            return $this->table;
+        } else {
+            return $this->table->offsetGet($key);
+        }
+    }
+
+    public function siblings($name = null)
+    {
+        return $this->table->columns($name);
     }
 
     private function format($raw)

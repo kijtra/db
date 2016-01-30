@@ -3,7 +3,7 @@ namespace Kijtra\DB;
 
 use \Kijtra\DB\Constant;
 
-class Config implements Constant, \ArrayAccess
+class Config implements \ArrayAccess
 {
     private $container = array(
         'dsn' => null,
@@ -101,11 +101,11 @@ class Config implements Constant, \ArrayAccess
 
         if ('mysql' == $this->container['scheme'] || 'pgsql' == $this->container['scheme']) {
             if (empty($this->container['host'])) {
-                $this->container['host'] = self::DEFAULT_HOST;
+                $this->container['host'] = Constant::DEFAULT_HOST;
             }
 
             if (empty($this->container['charset'])) {
-                $this->container['charset'] = self::DEFAULT_CHARSET;
+                $this->container['charset'] = Constant::DEFAULT_CHARSET;
             }
 
             if (empty($this->container['port'])) {

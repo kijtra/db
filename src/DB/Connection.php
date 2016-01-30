@@ -3,7 +3,7 @@ namespace Kijtra\DB;
 
 use \Kijtra\DB\Constant;
 
-class Connection extends \PDO implements Constant
+class Connection extends \PDO
 {
     private $options = array(
         \PDO::ATTR_TIMEOUT => 10,
@@ -19,7 +19,7 @@ class Connection extends \PDO implements Constant
             $options = $this->options;
         }
 
-        $classHistory = self::CLASS_HISTORY;
+        $classHistory = Constant::CLASS_HISTORY;
         if ($history instanceof $classHistory) {
             $this->history = $history;
         }

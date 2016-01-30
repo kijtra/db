@@ -6,6 +6,7 @@ namespace Kijtra\DB\Container;
  * https://github.com/container-interop/fig-standards/blob/master/proposed/container.md
  */
 
+use \Kijtra\DB\Constant;
 use \Kijtra\DB\Connection;
 use \Kijtra\DB\Container\Base;
 use \Kijtra\DB\Container\Columns;
@@ -21,8 +22,8 @@ class Table extends Base
 
     public function __construct($name)
     {
-        $conn = $this->{self::PROP_CONN};
-        $classConnection = self::CLASS_CONNECTION;
+        $conn = $this->{Constant::PROP_CONN};
+        $classConnection = Constant::CLASS_CONNECTION;
 
         if (!($conn instanceof $classConnection)) {
             throw new \Exception('Database not connected.');
@@ -68,7 +69,11 @@ class Table extends Base
                 }
 
                 if (!empty($data['comment']) && !empty($data['charset'])) {
-                    $data['comment'] = mb_convert_encoding($data['comment'], $data['charset'], 'auto');
+                    $data['comment'] = mb_convert_encoding(
+                        $data['comment'],
+                        $data['charset'],
+                        'auto'
+                    );
                 }
 
                 $data['index'] = $data['primary'] = $data['require'] = array();
@@ -82,7 +87,7 @@ class Table extends Base
                         throw new \Exception(sprintf('Table "%s" has no columns.', $this->name));
                     }
 
-                    $columnClass = self::CLASS_COLUMN;
+                    $columnClass = Constant::CLASS_COLUMN;
                     $requires = $primaries = $indicies = array();
                     while($val = $query->fetch(\PDO::FETCH_ASSOC)) {
                         $column = new $columnClass($this, $val);
@@ -116,9 +121,13 @@ class Table extends Base
         return $this->name;
     }
 
-    public function columns()
+    public function columns($key = null)
     {
-        return $this->columns;
+        if (empty($key)) {
+            return $this->columns;
+        } elseif (!empty($this->columns[$key])) {
+            return $this->columns[$key];
+        }
     }
 
     public function values($values)
