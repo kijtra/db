@@ -1,20 +1,26 @@
 <?php
 namespace Kijtra;
 
-class DB
+use \Kijtra\DB\Constant;
+use \Kijtra\DB\History;
+use \Kijtra\DB\Config;
+use \Kijtra\DB\Connection;
+use \Kijtra\DB\Container\Table;
+
+class DB implements Constant
 {
     private $history;
     private $config;
+    private $conn;
     private $tables = array();
 
     private static $singleton;
 
     public function __construct($dsn, $username = null, $password = null, $options = null)
     {
-        $this->history = new DB\History();
-        $this->config = new DB\Config($dsn, $username, $password);
-
-        $this->db = new DB\Connection(
+        $this->history = new History();
+        $this->config = new Config($dsn, $username, $password);
+        $this->{self::PROP_CONN} = new Connection(
             $this->config['dsn'],
             $this->config['user'],
             $this->config['pass'],
@@ -22,8 +28,8 @@ class DB
             $this->history
         );
 
-        $this->db->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
-            __NAMESPACE__.'\\DB\\Statement',
+        $this->{self::PROP_CONN}->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
+            self::CLASS_STATEMENT,
             array($this->history)
         ));
     }
@@ -31,8 +37,8 @@ class DB
     public function config($key = null)
     {
         if (isset($key)) {
-            if (isset($this->config[$key])) {
-                return $this->config[$key];
+            if ($this->config->offsetExists($key)) {
+                return $this->config->offsetGet($key);
             }
         } else {
             return $this->config->all();
@@ -44,31 +50,22 @@ class DB
         return $this->history->get();
     }
 
-    public function column($tableName)
+    public function table($name)
     {
-        if (!empty($this->tables[$tableName])) {
-            return $this->tables[$tableName];
+        if (!empty($this->tables[$name])) {
+            return $this->tables[$name];
         }
 
-        try {
-            return $this->tables[$tableName] = new DB\Column($tableName, $this->db);
-        } catch(\PDOException $e) {
-            throw $e;
-        } catch(\Exception $e) {
-            throw $e;
-        }
+        $reflection = new \ReflectionClass(self::CLASS_TABLE);
+        $instance = $reflection->newInstanceWithoutConstructor();
+        $instance->{self::PROP_CONN} = $this->{self::PROP_CONN};
+        $instance->__construct($name);
+        return $this->tables[$name] = $instance;
     }
 
-    public function columnInfo($tableName)
+    public function columns($name)
     {
-        $column = $this->column($tableName);
-        return $column->getRaw();
-    }
-
-    public function table($tableName)
-    {
-        $column = $this->column($tableName);
-        return $column->getTable();
+        return $this->table($name)->columns();
     }
 
     public static function single()
@@ -86,28 +83,34 @@ class DB
         return self::$singleton;
     }
 
+
+    // public function __get($tableName)
+    // {
+    //     return $this->table($tableName);
+    // }
+
     public function __call($method, $args)
     {
         $len = count($args);
         if (0 === $len) {
-            return $this->db->$method();
+            return $this->conn->$method();
         } elseif(1 === $len) {
-            return $this->db->$method($args[0]);
+            return $this->conn->$method($args[0]);
         } elseif(2 === $len) {
-            return $this->db->$method($args[0], $args[1]);
+            return $this->conn->$method($args[0], $args[1]);
         } elseif(3 === $len) {
-            return $this->db->$method($args[0], $args[1], $args[2]);
+            return $this->conn->$method($args[0], $args[1], $args[2]);
         } elseif(4 === $len) {
-            return $this->db->$method($args[0], $args[1], $args[2], $args[3]);
+            return $this->conn->$method($args[0], $args[1], $args[2], $args[3]);
         } elseif(5 === $len) {
-            return $this->db->$method($args[0], $args[1], $args[2], $args[3], $args[4]);
+            return $this->conn->$method($args[0], $args[1], $args[2], $args[3], $args[4]);
         } else {
-            return call_user_func_array(array($this->db, $method), $args);
+            return call_user_func_array(array($this->conn, $method), $args);
         }
     }
 
-    public function __debugInfo()
-    {
-        return $this->db;
-    }
+    // public function __debugInfo()
+    // {
+    //     return $this->conn;
+    // }
 }

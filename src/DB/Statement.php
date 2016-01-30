@@ -1,15 +1,20 @@
 <?php
 namespace Kijtra\DB;
 
+use \Kijtra\DB\Constant;
+
 // http://stackoverflow.com/a/7716896/3101326
-class Statement extends \PDOStatement
+class Statement extends \PDOStatement implements Constant
 {
     private $history;
     private $binds = array();
 
-    protected function __construct(History $history = null)
+    protected function __construct($history = null)
     {
-        $this->history = $history;
+        $classHistory = self::CLASS_HISTORY;
+        if ($history instanceof $classHistory) {
+            $this->history = $history;
+        }
     }
 
     public function bindParam($param, &$value, $type = \PDO::PARAM_STR, $length = null, $options = null)
@@ -39,7 +44,7 @@ class Statement extends \PDOStatement
             if (!$noLog) {
                 $this->history->set($this->queryString, $binds);
             }
-            
+
             return parent::execute();
         }
     }

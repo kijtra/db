@@ -1,8 +1,8 @@
 {
     "name": "kijtra/db",
-    "description": "Simple PDO helper",
+    "description": "Simple PDO wrapper",
     "type": "library",
-    "keywords": ["PHP", "PDO", "DB", "Helper"],
+    "keywords": ["PHP", "PDO", "DB", "Wrapper"],
     "homepage": "https://github.com/kijtra/db",
     "license": "MIT",
     "authors": [
@@ -12,10 +12,11 @@
         }
     ],
     "require": {
-        "php": ">=5.3"
+        "php": ">=5.4",
+        "respect/validation": "^1.0"
     },
     "suggest": {
-        "kijtra/Config": "Simple PDO helper"
+        "kijtra/db": "Simple PDO wrapper"
     },
     "autoload": {
         "files": ["src/functions.php"],
