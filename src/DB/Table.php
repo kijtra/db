@@ -78,10 +78,11 @@ class Table implements \ArrayAccess, \IteratorAggregate
                 }
 
                 if (!empty($data['comment']) && !empty($data['charset'])) {
+                    $charset = str_replace('mb4', '', $data['charset']);
                     $data['comment'] = mb_convert_encoding(
                         $data['comment'],
-                        $data['charset'],
-                        'auto'
+                        mb_internal_encoding(),
+                        $charset
                     );
                 }
 
@@ -234,7 +235,6 @@ class Table implements \ArrayAccess, \IteratorAggregate
         if (!empty($value)) {
             $value = strtolower($value);
             $charset = substr($value, 0, strpos($value, '_'));
-            $charset = str_replace('mb4', '', $charset);
             return $charset;
         }
     }

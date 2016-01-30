@@ -60,7 +60,12 @@ class Column implements \ArrayAccess, \IteratorAggregate
         );
 
         if (!empty($data['comment']) && !empty($data['charset'])) {
-            $data['comment'] = mb_convert_encoding($data['comment'], $data['charset'], 'auto');
+            $charset = str_replace('mb4', '', $data['charset']);
+            $data['comment'] = mb_convert_encoding(
+                $data['comment'],
+                mb_internal_encoding(),
+                $charset
+            );
         }
 
         return $this->data = $data;
