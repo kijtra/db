@@ -8,12 +8,14 @@ namespace Kijtra\DB\Container;
 
 use \Kijtra\DB\Constant;
 use \Kijtra\DB\Connection;
-use \Kijtra\DB\Container\Base;
 use \Kijtra\DB\Container\Table;
 
-class Column extends Base
+class Column implements Constant, \ArrayAccess, \IteratorAggregate
 {
     private $table;
+
+    private $raw = array();
+    private $data = array();
 
     public function __construct($table, $raw)
     {
@@ -162,6 +164,16 @@ class Column extends Base
         }
     }
 
+    private function formatCharset($value)
+    {
+        if (!empty($value)) {
+            $value = strtolower($value);
+            $charset = substr($value, 0, strpos($value, '_'));
+            $charset = str_replace('mb4', '', $charset);
+            return $charset;
+        }
+    }
+
     private function formatPrimary($value)
     {
         if (empty($value)) {
@@ -190,4 +202,51 @@ class Column extends Base
     }
 
 
+    public function offsetExists($offset)
+    {
+        if (!is_string($offset)) {
+            throw new \TypeError('Argument must be of the type string, '.gettype($offset).' given, called');
+        }
+
+        $offset = strtolower($offset);
+        return array_key_exists($offset, $this->data);
+    }
+
+    public function offsetGet($offset)
+    {
+        if (!is_string($offset)) {
+            throw new \TypeError('Argument must be of the type string, '.gettype($offset).' given, called');
+        }
+
+        $offset = strtolower($offset);
+        if (array_key_exists($offset, $this->data)) {
+            return $this->data[$offset];
+        }
+    }
+
+    public function offsetSet($offset, $value) {
+        if (!is_string($offset)) {
+            throw new \TypeError('Argument must be of the type string, '.gettype($offset).' given, called');
+        }
+
+        $this->data[$offset] = $value;
+    }
+
+    public function offsetUnset($offset) {
+        if (!is_string($offset)) {
+            throw new \TypeError('Argument must be of the type string, '.gettype($offset).' given, called');
+        }
+
+        unset($this->data[$offset]);
+    }
+
+    function getIterator()
+    {
+        return new \ArrayIterator($this->data);
+    }
+
+    public function __debugInfo()
+    {
+        return $this->data;
+    }
 }

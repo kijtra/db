@@ -60,12 +60,9 @@ class DB implements Constant
             return $this->tables[$dbname.$name];
         }
 
-        $reflection = new \ReflectionClass(self::CLASS_TABLE);
-        $instance = $reflection->newInstanceWithoutConstructor();
-        $instance->{self::PROP_CONN} = $this->{self::PROP_CONN};
-        $instance->__construct($name);
-        $name = $instance->name();
-        return $this->tables[$dbname.$name] = $instance;
+        $table = new Table($name, $this->conn);
+        $name = $table->name();
+        return $this->tables[$dbname.$name] = $table;
     }
 
     public function columns($name)
