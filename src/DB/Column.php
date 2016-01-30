@@ -22,7 +22,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
             $this->raw = $raw;
         }
 
-        $this->format($raw);
+        $this->correct($raw);
     }
 
     public function table($key = null)
@@ -39,22 +39,22 @@ class Column implements \ArrayAccess, \IteratorAggregate
         return $this->table->columns($name);
     }
 
-    private function format($raw)
+    private function correct($raw)
     {
         $requires = $primaries = $indicies = array();
 
         $data = array(
             'name' => $raw['Field'],
             'comment' => (!empty($raw['Comment']) ? $raw['Comment'] : null),
-            'type' => $this->formatType($raw['Type']),
-            'length' => $this->formatLength($raw['Type']),
-            'unsigned' => $this->formatUnsigned($raw['Type']),
-            'default' => $this->formatDefault($raw['Default'], $raw['Extra']),
-            'charset' => $this->formatCharset($raw['Collation']),
-            'require' => $this->formatRequire($raw['Null']),
-            'primary' => $this->formatPrimary($raw['Key']),
-            'index' => $this->formatIndex($raw['Key']),
-            'auto_increment' => $this->formatAutoIncrement($raw['Extra']),
+            'type' => $this->correctType($raw['Type']),
+            'length' => $this->correctLength($raw['Type']),
+            'unsigned' => $this->correctUnsigned($raw['Type']),
+            'default' => $this->correctDefault($raw['Default'], $raw['Extra']),
+            'charset' => $this->correctCharset($raw['Collation']),
+            'require' => $this->correctRequire($raw['Null']),
+            'primary' => $this->correctPrimary($raw['Key']),
+            'index' => $this->correctIndex($raw['Key']),
+            'auto_increment' => $this->correctAutoIncrement($raw['Extra']),
             'value' => null,
             'raw' => $raw,
         );
@@ -67,7 +67,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
     }
 
 
-    private function formatType($value)
+    private function correctType($value)
     {
         $value = strtolower($value);
 
@@ -126,19 +126,19 @@ class Column implements \ArrayAccess, \IteratorAggregate
         }
     }
 
-    private function formatLength($value)
+    private function correctLength($value)
     {
         if (preg_match('/\((\d+)\)/', $value, $match)) {
             return (int)$match[1];
         }
     }
 
-    private function formatUnsigned($value)
+    private function correctUnsigned($value)
     {
         return (false !== strpos(strtolower($value), 'unsigned'));
     }
 
-    private function formatRequire($value)
+    private function correctRequire($value)
     {
         if (empty($value)) {
             return false;
@@ -147,7 +147,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
         return ('no' == strtolower($value));
     }
 
-    private function formatDefault($value, $extra)
+    private function correctDefault($value, $extra)
     {
         if (preg_match('/CURRENT_(TIME|DATE)/i', $value) || preg_match('/CURRENT_(TIME|DATE)/i', $extra)) {
             return 'current_timestamp';
@@ -156,7 +156,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
         }
     }
 
-    private function formatCharset($value)
+    private function correctCharset($value)
     {
         if (!empty($value)) {
             $value = strtolower($value);
@@ -166,7 +166,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
         }
     }
 
-    private function formatPrimary($value)
+    private function correctPrimary($value)
     {
         if (empty($value)) {
             return false;
@@ -175,7 +175,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
         return (0 === strpos(strtolower($value), 'pri'));
     }
 
-    private function formatIndex($value)
+    private function correctIndex($value)
     {
         if (empty($value)) {
             return false;
@@ -184,7 +184,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
         return (preg_match('/\A(pri|key|mul)/i', strtolower($value)) >= 0);
     }
 
-    private function formatAutoIncrement($value)
+    private function correctAutoIncrement($value)
     {
         if (empty($value)) {
             return false;

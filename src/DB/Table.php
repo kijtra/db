@@ -59,7 +59,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
                     $data[$lower] = $val;
 
                     if ('collation' == $lower) {
-                        $data['charset'] = $this->formatCharset($val);
+                        $data['charset'] = $this->correctCharset($val);
                     }
                 }
 
@@ -229,7 +229,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
         return $results;
     }
 
-    private function formatCharset($value)
+    private function correctCharset($value)
     {
         if (!empty($value)) {
             $value = strtolower($value);
