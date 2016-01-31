@@ -22,7 +22,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
         if (!($conn instanceof Connection)) {
             throw new \Exception('Database not connected.');
         } elseif(!is_string($name)) {
-            throw new \Exception('Table name is not string.');
+            throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called');
         }
 
         $config = $conn->config;
@@ -146,13 +146,15 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
     public function values($values)
     {
-        if (is_array($values)) {
-            $columns = $this->columns();
-            $filtered = array();
-            foreach($values as $column => $val) {
-                if (!empty($this->columns[$column])) {
-                    $this->columns[$column]->offsetSet('value', $val);
-                }
+        if (!is_array($values)) {
+            throw new \TypeError('Argument must be of the type array, '.gettype($values).' given, called');
+        }
+
+        $columns = $this->columns();
+        $filtered = array();
+        foreach($values as $column => $val) {
+            if (!empty($this->columns[$column])) {
+                $this->columns[$column]->offsetSet('value', $val);
             }
         }
 
