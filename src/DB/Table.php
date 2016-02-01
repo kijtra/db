@@ -3,19 +3,18 @@ namespace Kijtra\DB;
 
 use \Kijtra\DB\Connection;
 use \Kijtra\DB\Column;
+use \Kijtra\DB\Event;
 
 class Table implements \ArrayAccess, \IteratorAggregate
 {
     private $name;
+    private $fullName;
     private $queryName;
 
     private $raw = array();
     private $data = array();
-    private $columns = array();
 
-    private $values = array();
-    private $formatter = array();
-    private $validator = array();
+    private static $columns = array();
 
     public function __construct($name, $conn)
     {
@@ -38,6 +37,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
         }
 
         $this->name = $tableName;
+        $this->fullName  = $dbName.$tableName;
         $this->queryName  = "`".trim($conn->quote($dbName), "'")."`.";
         $this->queryName .= "`".trim($conn->quote($tableName), "'")."`";
 
@@ -45,7 +45,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
             $sql  = "SHOW TABLE STATUS FROM ";
             $sql .= "`".trim($conn->quote($dbName), "'")."` LIKE ?;";
             $stmt = $conn->prepare($sql);
-            if ($stmt->execute(array($this->name), true)) {
+            if ($stmt->execute(array($this->name), null, true)) {
                 $raw = $stmt->fetch(\PDO::FETCH_ASSOC);
                 if (empty($raw)) {
                     throw new \Exception(sprintf('Table "%s" not found.', $this->name));
@@ -87,12 +87,13 @@ class Table implements \ArrayAccess, \IteratorAggregate
                 }
 
                 $data['index'] = $data['primary'] = $data['require'] = array();
-                $data['raw'] = $raw;
 
                 $this->data = $data;
+                $this->event = new Event($this);
+
 
                 $sql  = "SHOW FULL COLUMNS FROM ".$this->queryName.";";
-                if ($query = $conn->query($sql, true)) {
+                if ($query = $conn->query($sql, null, true)) {
                     if (!$query->rowCount()) {
                         throw new \Exception(sprintf('Table "%s" has no columns.', $tableName));
                     }
@@ -100,7 +101,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
                     $requires = $primaries = $indicies = array();
                     while($val = $query->fetch(\PDO::FETCH_ASSOC)) {
                         $column = new Column($this, $val);
-                        $this->columns[$column['name']] = $column;
+                        self::$columns[$column['name']] = $column;
 
                         if ($column['require']) {
                             $requires[] = $column['name'];
@@ -125,57 +126,54 @@ class Table implements \ArrayAccess, \IteratorAggregate
         }
     }
 
-    public function name()
+    public function get($key = null)
+    {
+        if (empty($key)) {
+            return $this->data;
+        } else {
+            return $this->offsetGet($key);
+        }
+    }
+
+    public function getRaw()
+    {
+        return $this->raw;
+    }
+
+    public function getName()
     {
         return $this->name;
     }
 
-    public function qname()
+    public function getFullName()
+    {
+        return $this->fullName;
+    }
+
+    public function getQueryName()
     {
         return $this->queryName;
     }
 
-    public function columns($key = null)
+    public function getColumns($key = null)
     {
         if (empty($key)) {
-            return $this->columns;
-        } elseif (!empty($this->columns[$key])) {
-            return $this->columns[$key];
+            return self::$columns;
+        } elseif (!empty(self::$columns[$key])) {
+            return self::$columns[$key];
         }
     }
 
-    public function values($values)
+    public function setValues($values)
     {
-        if (!is_array($values)) {
-            throw new \TypeError('Argument must be of the type array, '.gettype($values).' given, called');
-        }
-
-        $columns = $this->columns();
-        $filtered = array();
-        foreach($values as $column => $val) {
-            if (!empty($this->columns[$column])) {
-                $this->columns[$column]->offsetSet('value', $val);
-            }
-        }
-
-        return $this;
-    }
-
-
-    public function formatter($arg1 = null, $arg2 = null)
-    {
-        $callbacks = null;
-        if (is_array($arg1)) {
-            $callbacks = $arg1;
-        } elseif(is_string($arg1) && !empty($arg2)) {
-            $callbacks = array($arg1 => $arg2);
-        }
-
-        if (!empty($callbacks)) {
-            foreach($callbacks as $column => $callback) {
-                if (!empty($this->columns[$column]) && is_callable($callback)) {
-                    $callback = $callback->bindTo($this->columns[$column]);
-                    $this->formatter[$column] = $callback;
+        $args = func_get_args();
+        $num = func_num_args();
+        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
+            self::$columns[$args[0]]->setValue($args[1]);
+        } elseif(is_array($values)) {
+            foreach($values as $column => $val) {
+                if (!empty(self::$columns[$column])) {
+                    self::$columns[$column]->setValue($val);
                 }
             }
         }
@@ -183,20 +181,49 @@ class Table implements \ArrayAccess, \IteratorAggregate
         return $this;
     }
 
-    public function validator($arg1 = null, $arg2 = null)
+    public function getValues($key = null)
     {
-        $callbacks = null;
-        if (is_array($arg1)) {
-            $callbacks = $arg1;
-        } elseif(is_string($arg1) && !empty($arg2)) {
-            $callbacks = array($arg1 => $arg2);
+        if (is_string($key)) {
+            if (!empty(self::$columns[$key])) {
+                return self::$columns[$key]->getValue();
+            }
+        } else {
+            $values = array();
+            foreach(self::$columns as $column) {
+                $values[$column->getName()] = $column->getValue();
+            }
+            return $values;
+        }
+    }
+
+    public function clearValues()
+    {
+        foreach(self::$columns as $key => $column) {
+            self::$columns[$key]->removeValue();
         }
 
-        if (!empty($callbacks)) {
-            foreach($callbacks as $column => $callback) {
-                if (!empty($this->columns[$column]) && is_callable($callback)) {
-                    $callback = $callback->bindTo($this->columns[$column]);
-                    $this->validator[$column] = $callback;
+        return $this;
+    }
+
+    public function clearAll()
+    {
+        foreach(self::$columns as $key => $column) {
+            self::$columns[$key]->removeValue()->removeFormatter()->removeValidator();
+        }
+
+        return $this;
+    }
+
+    public function setFormatters($values)
+    {
+        $args = func_get_args();
+        $num = func_num_args();
+        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
+            self::$columns[$args[0]]->setFormatter($args[1]);
+        } elseif(is_array($values)) {
+            foreach($values as $column => $val) {
+                if (!empty(self::$columns[$column])) {
+                    self::$columns[$column]->setFormatter($val);
                 }
             }
         }
@@ -204,33 +231,120 @@ class Table implements \ArrayAccess, \IteratorAggregate
         return $this;
     }
 
-    public function format()
+    public function setValidators($values)
     {
-        if (empty($this->formatter)) {
-            return;
-        }
-
-        foreach($this->formatter as $column => $callback) {
-            $result = $callback($this->columns[$column]->offsetGet('value'));
-            $this->columns[$column]->offsetSet('value', $result);
+        $args = func_get_args();
+        $num = func_num_args();
+        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
+            self::$columns[$args[0]]->setFormatter($args[1]);
+        } elseif(is_array($values)) {
+            foreach($values as $column => $val) {
+                if (!empty(self::$columns[$column])) {
+                    self::$columns[$column]->setFormatter($val);
+                }
+            }
         }
 
         return $this;
     }
 
-    public function validate()
+    public function upsert($values = null, $callback = null)
     {
-        if (empty($this->validator)) {
-            return;
+        if (!empty($values)) {
+            if ($values instanceof \Closure) {
+                $callback = $values;
+            } else {
+                $this->values($values);
+            }
         }
 
-        $results = array();
-        foreach($this->validator as $column => $callback) {
-            $results[] = $callback($this->columns[$column]->offsetGet('value'));
-        }
+        $values = $this->values;
 
-        return $results;
+        $primary = null;
+        $primaries = $this->offsetGet('primary');
+        if (1 == count($primaries)) {
+            $primary = current($primaries);
+            if (empty($values[$primary])) {
+                $primary = null;
+            }
+        }
     }
+
+
+    // Aliases
+
+    public function raw()
+    {
+        return $this->getRaw();
+    }
+
+    public function name()
+    {
+        return $this->getName();
+    }
+
+    public function fullname()
+    {
+        return $this->getFullName();
+    }
+
+    public function fname()
+    {
+        return $this->getFullName();
+    }
+
+    public function qname()
+    {
+        return $this->getQueryName();
+    }
+
+    public function columns($key = null)
+    {
+        return $this->getColumns($key);
+    }
+
+    public function column($key)
+    {
+        return $this->getColumns($key);
+    }
+
+    public function clear()
+    {
+        return $this->clearValues();
+    }
+
+    public function setValue($key, $value)
+    {
+        return $this->setValues($key, $value);
+    }
+
+    public function getValue($key)
+    {
+        return $this->getValues($key);
+    }
+
+    public function formatters($args)
+    {
+        return $this->setFormatters($args);
+    }
+
+    public function validators($args)
+    {
+        return $this->setValidators($args);
+    }
+
+    public function formatter($key, $value)
+    {
+        return $this->setFormatters($key, $value);
+    }
+
+    public function validator($key, $value)
+    {
+        return $this->setValidators($key, $value);
+    }
+
+
+    // Helpers
 
     private function correctCharset($value)
     {
@@ -241,6 +355,13 @@ class Table implements \ArrayAccess, \IteratorAggregate
         }
     }
 
+
+    // Implements
+
+    public function __get($name)
+    {
+        return $this->offsetGet($name);
+    }
 
     public function offsetExists($offset)
     {

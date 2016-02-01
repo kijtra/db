@@ -10,6 +10,10 @@ class Column implements \ArrayAccess, \IteratorAggregate
     private $raw = array();
     private $data = array();
 
+    private $value;
+    private $formatter;
+    private $validator;
+
     public function __construct($table, $raw)
     {
         if(!($table instanceof Table)) {
@@ -22,25 +26,6 @@ class Column implements \ArrayAccess, \IteratorAggregate
             $this->raw = $raw;
         }
 
-        $this->correct($raw);
-    }
-
-    public function table($key = null)
-    {
-        if (empty($key)) {
-            return $this->table;
-        } else {
-            return $this->table->offsetGet($key);
-        }
-    }
-
-    public function siblings($name = null)
-    {
-        return $this->table->columns($name);
-    }
-
-    private function correct($raw)
-    {
         $requires = $primaries = $indicies = array();
 
         $data = array(
@@ -55,8 +40,6 @@ class Column implements \ArrayAccess, \IteratorAggregate
             'primary' => $this->correctPrimary($raw['Key']),
             'index' => $this->correctIndex($raw['Key']),
             'auto_increment' => $this->correctAutoIncrement($raw['Extra']),
-            'value' => null,
-            'raw' => $raw,
         );
 
         if (!empty($data['comment']) && !empty($data['charset'])) {
@@ -68,9 +51,142 @@ class Column implements \ArrayAccess, \IteratorAggregate
             );
         }
 
-        return $this->data = $data;
+        $this->data = $data;
     }
 
+    public function get($key = null)
+    {
+        if (empty($key)) {
+            return $this->data;
+        } else {
+            return $this->offsetGet($key);
+        }
+    }
+
+    public function getTable()
+    {
+        return $this->table;
+    }
+
+    public function getRaw()
+    {
+        return $this->raw;
+    }
+
+    public function getName()
+    {
+        return $this->data['name'];
+    }
+
+    public function getSiblings($name = null)
+    {
+        if (!empty($name)) {
+            return $this->table->getColumns($name);
+        } else {
+            $columns = $this->table->getColumns($name);
+            unset($columns[$this->getName()]);
+            return $columns;
+        }
+    }
+
+    public function setValue($value)
+    {
+        $this->value = $value;
+    }
+
+    public function getValue()
+    {
+        if (!empty($this->formatter)) {
+            $callback = $this->formatter;
+            return $callback($this->value);
+        } else {
+            return $this->value;
+        }
+    }
+
+    public function removeValue()
+    {
+        $this->value = null;
+        return $this;
+    }
+
+    public function setFormatter($callback)
+    {
+        if (!($callback instanceof \Closure)) {
+            throw new \TypeError('Argument must be of the type closure, '.gettype($callback).' given.');
+        }
+
+        $callback = $callback->bindTo($this);
+        $this->formatter = $callback;
+    }
+
+    public function removeFormatter()
+    {
+        $this->formatter = null;
+        return $this;
+    }
+
+    public function setValidator($callback)
+    {
+        if (!($callback instanceof \Closure)) {
+            throw new \TypeError('Argument must be of the type closure, '.gettype($callback).' given.');
+        }
+
+        $callback = $callback->bindTo($this);
+        $this->validator = $callback;
+    }
+
+    public function removeValidator()
+    {
+        $this->validator = null;
+        return $this;
+    }
+
+    public function isValid()
+    {
+        if (empty($this->validator)) {
+            return true;
+        }
+
+        $args = func_get_args();
+        if (count($args) > 0) {
+            $this->setValue($args[0]);
+        }
+
+        return $this->validator($this->getValue());
+    }
+
+
+    // Aliases
+
+    public function table()
+    {
+        return $this->getTable();
+    }
+
+    public function raw()
+    {
+        return $this->getRaw();
+    }
+
+    public function name()
+    {
+        return $this->getName();
+    }
+
+    public function siblings($name = null)
+    {
+        return $this->getSiblings($name);
+    }
+
+    public function value($value = null)
+    {
+        $this->setValue($value);
+        return $this->getValue();
+    }
+
+
+    // Corrector
 
     private function correctType($value)
     {
@@ -198,6 +314,13 @@ class Column implements \ArrayAccess, \IteratorAggregate
         return (0 === strpos(strtolower($value), 'auto_incr'));
     }
 
+
+    // Implements
+
+    public function __get($name)
+    {
+        return $this->offsetGet($name);
+    }
 
     public function offsetExists($offset)
     {

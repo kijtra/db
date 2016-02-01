@@ -12,8 +12,7 @@ class DB
     private $history;
     private $config;
     private $conn;
-    private $tables = array();
-
+    private static $tables = array();
     private static $singleton;
 
     public function __construct($dsn, $username = null, $password = null, $options = null)
@@ -54,15 +53,15 @@ class DB
     public function table($name)
     {
         $dbname = $this->config['name'];
-        if (!empty($this->tables[$name])) {
-            return $this->tables[$name];
-        } elseif (!empty($this->tables[$dbname.$name])) {
-            return $this->tables[$dbname.$name];
+        if (!empty(self::$tables[$name])) {
+            return self::$tables[$name];
+        } elseif (!empty(self::$tables[$dbname.$name])) {
+            return self::$tables[$dbname.$name];
         }
 
         $table = new Table($name, $this->conn);
         $name = $table->name();
-        return $this->tables[$dbname.$name] = $table;
+        return self::$tables[$dbname.$name] = $table;
     }
 
     public function columns($name)
