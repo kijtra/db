@@ -5,6 +5,7 @@ use \Kijtra\DB\History;
 use \Kijtra\DB\Config;
 use \Kijtra\DB\Connection;
 use \Kijtra\DB\Table;
+use \Kijtra\DB\Flow;
 
 class DB
 {
@@ -67,6 +68,12 @@ class DB
     public function columns($name)
     {
         return $this->table($name)->columns();
+    }
+
+    public function sql($sql)
+    {
+        $flow = new Flow($this->conn);
+        return $flow->sql($sql);
     }
 
     public static function single()
