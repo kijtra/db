@@ -138,6 +138,11 @@ class Config implements \ArrayAccess
         return $this->container;
     }
 
+    public function __get($name)
+    {
+        return $this->offsetGet($name);
+    }
+
     public function offsetSet($offset, $value)
     {
         if (array_key_exists($offset, $this->container)) {
