@@ -3,7 +3,6 @@ namespace Kijtra\DB;
 
 use \Kijtra\DB\Connection;
 use \Kijtra\DB\Column;
-use \Kijtra\DB\Event;
 
 class Table implements \ArrayAccess, \IteratorAggregate
 {
@@ -89,7 +88,6 @@ class Table implements \ArrayAccess, \IteratorAggregate
                 $data['index'] = $data['primary'] = $data['require'] = array();
 
                 $this->data = $data;
-                $this->event = new Event($this);
 
 
                 $sql  = "SHOW FULL COLUMNS FROM ".$this->queryName.";";
