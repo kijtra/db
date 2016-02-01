@@ -28,7 +28,7 @@ class Statement extends \PDOStatement
         return parent::bindValue($param, $value, $type);
     }
 
-    public function execute($values = array(), $noLog = false)
+    public function execute($values = array(), $callback = null, $noLog = false)
     {
         $binds = $this->binds;
         $this->binds = array();
@@ -38,13 +38,27 @@ class Statement extends \PDOStatement
                 $this->history->set($this->queryString, $values);
             }
 
-            return parent::execute($values);
+            $result =  parent::execute($values);
+
+            if ($callback instanceof \Closure) {
+                $callback = $callback->bindTo($result);
+                $callback($result);
+            }
+
+            return $result;
         } else {
             if (!$noLog) {
                 $this->history->set($this->queryString, $binds);
             }
 
-            return parent::execute();
+            $result =  parent::execute();
+
+            if ($callback instanceof \Closure) {
+                $callback = $callback->bindTo($result);
+                $callback($result);
+            }
+
+            return $result;
         }
     }
 }

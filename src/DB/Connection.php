@@ -2,6 +2,7 @@
 namespace Kijtra\DB;
 
 use \Kijtra\DB\History;
+use \Kijtra\DB\Event;
 
 class Connection extends \PDO
 {
@@ -20,7 +21,8 @@ class Connection extends \PDO
         $pass = null,
         $options = null,
         $config = null,
-        $history = null
+        $history = null,
+        $event = null
     )
     {
         if (empty($options) || !is_array($options)) {
@@ -36,21 +38,35 @@ class Connection extends \PDO
         parent::__construct($dsn, $user, $pass, $options);
     }
 
-    public function exec($query, $noLog = false)
+    public function exec($query, $callback = null, $noLog = false)
     {
         if (!$noLog && isset($this->history)) {
             $this->history->set($query);
         }
 
-        return parent::exec($query);
+        $result =  parent::exec($query);
+
+        if ($callback instanceof \Closure) {
+            $callback = $callback->bindTo($result);
+            $callback($result);
+        }
+
+        return $result;
     }
 
-    public function query($query, $noLog = false)
+    public function query($query, $callback = null, $noLog = false)
     {
         if (!$noLog && isset($this->history)) {
             $this->history->set($query);
         }
 
-        return parent::query($query);
+        $result =  parent::query($query);
+
+        if ($callback instanceof \Closure) {
+            $callback = $callback->bindTo($result);
+            $callback($result);
+        }
+
+        return $result;
     }
 }
