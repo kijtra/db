@@ -1,20 +1,78 @@
 <?php
+/**
+ *  Kijtra/DB
+ *
+ * @link      https://github.com/kijtra/db
+ * @copyright Copyright (c) 22016 Kijtra
+ * @license   MIT License (http://opensource.org/licenses/mit-license.php)
+ */
 namespace Kijtra;
 
-use \Kijtra\DB\History;
-use \Kijtra\DB\Config;
-use \Kijtra\DB\Connection;
-use \Kijtra\DB\Table;
-use \Kijtra\DB\Flow;
+use Kijtra\DB\History;
+use Kijtra\DB\Config;
+use Kijtra\DB\Connection;
+use Kijtra\DB\Table;
+use Kijtra\DB\Flow;
 
+/**
+ * DB
+ *
+ * This is the primary class with which you instantiate,
+ * configure, and run a Kijtra/DB application.
+ *
+ * Usage same of PDO constructor (http://php.net/manual/ja/pdo.construct.php)
+ */
 class DB
 {
+    /**
+     * History object
+     *
+     * @access private
+     * @var History
+     */
     private $history;
+
+    /**
+     * Config object
+     *
+     * @access private
+     * @var Config
+     */
     private $config;
+
+    /**
+     * PDO connection object
+     *
+     * @access private
+     * @var object
+     */
     private $conn;
+
+    /**
+     * Loaded table objects
+     *
+     * @access private
+     * @var array
+     */
     private static $tables = array();
+
+    /**
+     * Singleton object optional use
+     *
+     * @access private
+     * @var object
+     */
     private static $singleton;
 
+    /**
+     * Create new object
+     *
+     * @param string|array  $dsn  Data Source Name or database config array
+     * @param string  $username  Database Username
+     * @param string  $password  Database Password
+     * @param string  $options  PDO driver option
+     * @throws PDOException when Database connect failed
+     */
     public function __construct($dsn, $username = null, $password = null, $options = null)
     {
         $this->history = new History();
@@ -34,7 +92,13 @@ class DB
         ));
     }
 
-    public function config($key = null)
+    /**
+     * Config getter
+     *
+     * @param string  $key  Config array key
+     * @return mixed  If pass $key return one, else all config data
+     */
+    public function getConfig($key = null)
     {
         if (isset($key)) {
             if ($this->config->offsetExists($key)) {
@@ -45,12 +109,23 @@ class DB
         }
     }
 
-    public function history()
+    /**
+     * Get Query history
+     *
+     * @return array  SQL sentense and Binded data in array
+     */
+    public function getHistory()
     {
         return $this->history->get();
     }
 
-    public function table($name)
+    /**
+     * Get Database Table info object
+     *
+     * @param string  $name  Table Name
+     * @return object  Table data object
+     */
+    public function getTable($name)
     {
         $dbname = $this->config['name'];
         if (!empty(self::$tables[$name])) {
@@ -64,18 +139,39 @@ class DB
         return self::$tables[$dbname.$name] = $table;
     }
 
-    public function columns($name)
+    /**
+     * Get Table's Columns info object (shortcut)
+     *
+     * @param string  $name  Table Name
+     * @return array  Table's Columns info array
+     */
+    public function getColumns($name)
     {
         return $this->table($name)->columns();
     }
 
+    /**
+     * DB/Flow runner
+     *
+     * Starting Flow object
+     *
+     * @param string  $sql  SQL sentence
+     * @return object  DB/Flow object
+     */
     public function sql($sql)
     {
         $flow = new Flow($this->conn);
         return $flow->sql($sql);
     }
 
-    public static function single()
+    /**
+     * Singleton method
+     *
+     * Use singleton object at self
+     *
+     * @see __construct
+     */
+    public static function singleton()
     {
         if (null === self::$singleton) {
             $ref = new \ReflectionClass(__CLASS__);
@@ -90,6 +186,55 @@ class DB
         return self::$singleton;
     }
 
+
+    /********************************************************************************
+     * Aliases
+     *******************************************************************************/
+
+    /**
+     * @see getConfig
+     */
+    public function config($key = null)
+    {
+        return $this->getConfig($key);
+    }
+
+    /**
+     * @see getHistory
+     */
+    public function history()
+    {
+        return $this->getHistory();
+    }
+
+    /**
+     * @see getTable
+     */
+    public function table($name)
+    {
+        return $this->getTable($name);
+    }
+
+    /**
+     * @see getColumns
+     */
+    public function columns($name)
+    {
+        return $this->getColumns($name);
+    }
+
+
+    /********************************************************************************
+     * Overloads
+     *******************************************************************************/
+
+    /**
+     * Pass method to PDO object
+     *
+     * @param string  $method  PDO method name
+     * @param array  $args  PDO method arguments
+     * @return object  PDO method results
+     */
     public function __call($method, $args)
     {
         $len = count($args);
@@ -110,6 +255,11 @@ class DB
         }
     }
 
+    /**
+     * var_dump checker for Developer
+     *
+     * @return object  PDO object
+     */
     public function __debugInfo()
     {
         return $this->conn;

@@ -23,7 +23,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
             throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called');
         }
 
-        $config = $conn->config;
+        $config = $conn->getConfig();
 
         $dbName = $config['name'];
         $tableName = str_replace(array("'", "`"), '', $name);
