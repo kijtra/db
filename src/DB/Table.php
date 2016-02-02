@@ -6,14 +6,16 @@ use \Kijtra\DB\Column;
 
 class Table implements \ArrayAccess, \IteratorAggregate
 {
-    private $name;
+    private $conn;
     private $fullName;
     private $queryName;
 
     private $raw = array();
     private $data = array();
+    private $values = array();
 
     private static $columns = array();
+    private static $lastId;
 
     public function __construct($name, $conn)
     {
@@ -23,6 +25,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
             throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called');
         }
 
+        $this->conn = $conn;
         $config = $conn->getConfig();
 
         $dbName = $config['name'];
@@ -182,12 +185,16 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function getValues($key = null)
     {
         if (is_string($key)) {
-            if (!empty(self::$columns[$key])) {
+            if (!empty(self::$columns[$key]) && self::$columns[$key]->hasValue()) {
                 return self::$columns[$key]->getValue();
             }
         } else {
             $values = array();
             foreach(self::$columns as $column) {
+                if (!$column->hasValue()) {
+                    continue;
+                }
+
                 $values[$column->getName()] = $column->getValue();
             }
             return $values;
@@ -234,16 +241,43 @@ class Table implements \ArrayAccess, \IteratorAggregate
         $args = func_get_args();
         $num = func_num_args();
         if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
-            self::$columns[$args[0]]->setFormatter($args[1]);
+            self::$columns[$args[0]]->setValidator($args[1]);
         } elseif(is_array($values)) {
             foreach($values as $column => $val) {
                 if (!empty(self::$columns[$column])) {
-                    self::$columns[$column]->setFormatter($val);
+                    self::$columns[$column]->setValidator($val);
                 }
             }
         }
 
         return $this;
+    }
+
+    public function getValidationResults($values = null)
+    {
+        if (is_array($values)) {
+            $this->setValues($values);
+        }
+
+        $results = array();
+        foreach(self::$columns as $column) {
+            if (!$column->hasValue() || !$column->hasValidator()) {
+                continue;
+            }
+
+            $results[$column->getName()] = $column->isValid();
+        }
+
+        if (!empty($results)) {
+            return $results;
+        }
+    }
+
+    public Function getLastId()
+    {
+        if (!empty(self::$lastId)) {
+            return self::$lastId;
+        }
     }
 
     public function upsert($values = null, $callback = null)
@@ -252,20 +286,68 @@ class Table implements \ArrayAccess, \IteratorAggregate
             if ($values instanceof \Closure) {
                 $callback = $values;
             } else {
-                $this->values($values);
+                $this->setValues($values);
             }
+        } elseif(!($callback instanceof \Closure)) {
+            $callback = null;
         }
 
-        $values = $this->values;
+        $values = $this->getValues();
 
-        $primary = null;
+        $isUpdate = false;
+        $onlyPrimary = null;
         $primaries = $this->offsetGet('primary');
-        if (1 == count($primaries)) {
-            $primary = current($primaries);
-            if (empty($values[$primary])) {
-                $primary = null;
+        if (!empty($primaries)) {
+            if (1 === count($primaries)) {
+                $onlyPrimary = current($primaries);
+                $isUpdate = (!empty($values[$onlyPrimary]));
+            } else {
+                $flag = true;
+                foreach($primaries as $key) {
+                    if (empty($values[$key])) {
+                        $flag = false;
+                    }
+                }
+                $isUpdate = $flag;
             }
         }
+
+        $sql = array();
+        $sql[] = "INSERT INTO ".$this->getQueryName();
+        $sql[] = "(`".implode("`,`", array_keys($values))."`)";
+        $sql[] = "VALUES";
+        $sql[] = "(".implode(",", array_fill(0, count($values), '?')).")";
+        $sql[] = "ON DUPLICATE KEY UPDATE";
+        $updates = array();
+        foreach($values as $key => $val) {
+            if ($key == $onlyPrimary) {
+                $updates[] = "`{$key}`=LAST_INSERT_ID(`{$key}`)";
+            } else {
+                $updates[] = "`{$key}`=VALUES(`{$key}`)";
+            }
+        }
+        $sql = implode(PHP_EOL, $sql).PHP_EOL.implode(",".PHP_EOL, $updates).";";
+
+        try {
+            $stmt = $this->conn->prepare($sql);
+            if ($stmt->execute(array_values($values))) {
+                $lastId = $this->conn->lastInsertId();
+                if (!empty($lastId)) {
+                    self::$lastId = $lastId;
+
+                    if (!empty($callback)) {
+                        $callback = $callback->bindTo($this);
+                        $callback(self::$lastId);
+                    }
+                }
+
+                return true;
+            }
+        } catch(\PDOExeption $e) {
+            throw $e;
+        }
+
+        return false;
     }
 
 
@@ -339,6 +421,16 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function validator($key, $value)
     {
         return $this->setValidators($key, $value);
+    }
+
+    public function validation($values = null)
+    {
+        return $this->setValidationResults($values);
+    }
+
+    public function lastInsertId ()
+    {
+        return $this->getLastId();
     }
 
 

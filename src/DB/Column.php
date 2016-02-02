@@ -10,7 +10,6 @@ class Column implements \ArrayAccess, \IteratorAggregate
     private $raw = array();
     private $data = array();
 
-    private $value;
     private $formatter;
     private $validator;
 
@@ -96,6 +95,10 @@ class Column implements \ArrayAccess, \IteratorAggregate
 
     public function getValue()
     {
+        if (!$this->hasValue()) {
+            return;
+        }
+
         if (!empty($this->formatter)) {
             $callback = $this->formatter;
             return $callback($this->value);
@@ -104,9 +107,14 @@ class Column implements \ArrayAccess, \IteratorAggregate
         }
     }
 
+    public function hasValue()
+    {
+        return property_exists($this, 'value');
+    }
+
     public function removeValue()
     {
-        $this->value = null;
+        unset($this->value);
         return $this;
     }
 
@@ -118,6 +126,11 @@ class Column implements \ArrayAccess, \IteratorAggregate
 
         $callback = $callback->bindTo($this);
         $this->formatter = $callback;
+    }
+
+    public function hasFormatter()
+    {
+        return (!empty($this->formatter) && is_callable($this->formatter));
     }
 
     public function removeFormatter()
@@ -136,6 +149,11 @@ class Column implements \ArrayAccess, \IteratorAggregate
         $this->validator = $callback;
     }
 
+    public function hasValidator()
+    {
+        return (!empty($this->validator) && is_callable($this->validator));
+    }
+
     public function removeValidator()
     {
         $this->validator = null;
@@ -144,7 +162,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
 
     public function isValid()
     {
-        if (empty($this->validator)) {
+        if (!$this->hasValidator()) {
             return true;
         }
 
@@ -153,7 +171,8 @@ class Column implements \ArrayAccess, \IteratorAggregate
             $this->setValue($args[0]);
         }
 
-        return $this->validator($this->getValue());
+        $callback = $this->validator;
+        return $callback($this->getValue());
     }
 
 
