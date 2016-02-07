@@ -104,6 +104,16 @@ class DB
     }
 
     /**
+     * Connection getter
+     *
+     * @return object  DB Connection object
+     */
+    public function getConnection()
+    {
+        return $this->conn;
+    }
+
+    /**
      * Get Query history
      *
      * @return array  SQL sentense and Binded data in array
@@ -128,7 +138,7 @@ class DB
             return self::$tables[$dbname.$name];
         }
 
-        $table = new \Kijtra\DB\Table($name, $this->conn);
+        $table = new \Kijtra\DB\Table($name, $this);
         $name = $table->name();
         return self::$tables[$dbname.$name] = $table;
     }

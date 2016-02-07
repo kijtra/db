@@ -3,6 +3,7 @@ namespace Kijtra\DB;
 
 class Table implements \ArrayAccess, \IteratorAggregate
 {
+    private $db;
     private $conn;
     private $fullName;
     private $queryName;
@@ -14,15 +15,16 @@ class Table implements \ArrayAccess, \IteratorAggregate
     private static $columns = array();
     private static $lastId;
 
-    public function __construct($name, $conn)
+    public function __construct($name, $db)
     {
-        if (!($conn instanceof \Kijtra\DB\Connection)) {
-            throw new \Exception('Database not connected.');
+        if (!($conn instanceof \Kijtra\DB)) {
+            throw new \Exception('Argument must be instance of DB.');
         } elseif(!is_string($name)) {
-            throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called');
+            throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called.');
         }
 
-        $this->conn = $conn;
+        $this->db = $db;
+        $this->conn = $db->getConnection();
         $config = $conn->getConfig();
 
         $dbName = $config['name'];
@@ -151,6 +153,11 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function getQueryName()
     {
         return $this->queryName;
+    }
+
+    public function getSibling($name)
+    {
+        return $this->db->table($name);
     }
 
     public function getColumns($key = null)
@@ -373,6 +380,16 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function qname()
     {
         return $this->getQueryName();
+    }
+
+    public function sibling($name)
+    {
+        return $this->getSibling($name);
+    }
+
+    public function table($name)
+    {
+        return $this->getSibling($name);
     }
 
     public function columns($key = null)
