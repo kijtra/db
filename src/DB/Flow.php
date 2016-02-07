@@ -1,8 +1,6 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Connection;
-
 class Flow
 {
     private $conn;
@@ -17,7 +15,7 @@ class Flow
 
     public function __construct($conn)
     {
-        if (!($conn instanceof Connection)) {
+        if (!($conn instanceof \Kijtra\DB\Connection)) {
             throw new \Exception('Database not connected.');
         }
 

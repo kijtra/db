@@ -1,9 +1,6 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Connection;
-use \Kijtra\DB\Column;
-
 class Table implements \ArrayAccess, \IteratorAggregate
 {
     private $conn;
@@ -19,7 +16,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
     public function __construct($name, $conn)
     {
-        if (!($conn instanceof Connection)) {
+        if (!($conn instanceof \Kijtra\DB\Connection)) {
             throw new \Exception('Database not connected.');
         } elseif(!is_string($name)) {
             throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called');
@@ -101,7 +98,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
                     $requires = $primaries = $indicies = array();
                     while($val = $query->fetch(\PDO::FETCH_ASSOC)) {
-                        $column = new Column($this, $val);
+                        $column = new \Kijtra\DB\Column($this, $val);
                         self::$columns[$column['name']] = $column;
 
                         if ($column['require']) {

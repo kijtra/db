@@ -8,12 +8,6 @@
  */
 namespace Kijtra;
 
-use Kijtra\DB\History;
-use Kijtra\DB\Config;
-use Kijtra\DB\Connection;
-use Kijtra\DB\Table;
-use Kijtra\DB\Flow;
-
 /**
  * DB
  *
@@ -75,9 +69,9 @@ class DB
      */
     public function __construct($dsn, $username = null, $password = null, $options = null)
     {
-        $this->history = new History();
-        $this->config = new Config($dsn, $username, $password);
-        $this->conn = new Connection(
+        $this->history = new \Kijtra\DB\History();
+        $this->config = new \Kijtra\DB\Config($dsn, $username, $password);
+        $this->conn = new \Kijtra\DB\Connection(
             $this->config['dsn'],
             $this->config['user'],
             $this->config['pass'],
@@ -134,7 +128,7 @@ class DB
             return self::$tables[$dbname.$name];
         }
 
-        $table = new Table($name, $this->conn);
+        $table = new \Kijtra\DB\Table($name, $this->conn);
         $name = $table->name();
         return self::$tables[$dbname.$name] = $table;
     }
@@ -160,7 +154,7 @@ class DB
      */
     public function sql($sql)
     {
-        $flow = new Flow($this->conn);
+        $flow = new \Kijtra\DB\Flow($this->conn);
         return $flow->sql($sql);
     }
 

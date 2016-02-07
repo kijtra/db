@@ -1,8 +1,6 @@
 <?php
 namespace Kijtra\DB;
 
-use \Kijtra\DB\Table;
-
 class Column implements \ArrayAccess, \IteratorAggregate
 {
     private $table;
@@ -15,7 +13,7 @@ class Column implements \ArrayAccess, \IteratorAggregate
 
     public function __construct($table, $raw)
     {
-        if(!($table instanceof Table)) {
+        if(!($table instanceof \Kijtra\DB\Table)) {
             throw new \Exception('Table is not object.');
         }
 

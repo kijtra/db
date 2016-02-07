@@ -8,8 +8,6 @@
  */
 namespace Kijtra\DB;
 
-use Kijtra\DB\History;
-
 /**
  * DB/Statement
  *
@@ -40,7 +38,7 @@ class Statement extends \PDOStatement
      */
     protected function __construct($history = null)
     {
-        if ($history instanceof History) {
+        if ($history instanceof \Kijtra\DB\History) {
             $this->history = $history;
         }
     }

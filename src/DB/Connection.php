@@ -8,9 +8,6 @@
  */
 namespace Kijtra\DB;
 
-use Kijtra\DB\Config;
-use Kijtra\DB\History;
-
 /**
  * DB/Connection
  *
@@ -71,13 +68,13 @@ class Connection extends \PDO
             $options = $this->options;
         }
 
-        if (!($config instanceof Config)) {
+        if (!($config instanceof \Kijtra\DB\Config)) {
             throw new \Exception('Argument 5 must be instance of Config.');
         }
 
         $this->config = $config;
 
-        if ($history instanceof History) {
+        if ($history instanceof \Kijtra\DB\History) {
             $this->history = $history;
         }
 
