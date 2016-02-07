@@ -12,12 +12,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
     private $data = array();
     private $values = array();
 
-    private static $columns = array();
-    private static $lastId;
+    private $columns = array();
+    private $lastId;
 
     public function __construct($name, $db)
     {
-        if (!($conn instanceof \Kijtra\DB)) {
+        if (!($db instanceof \Kijtra\DB)) {
             throw new \Exception('Argument must be instance of DB.');
         } elseif(!is_string($name)) {
             throw new \TypeError('Argument must be of the type string, '.gettype($name).' given, called.');
@@ -25,7 +25,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
         $this->db = $db;
         $this->conn = $db->getConnection();
-        $config = $conn->getConfig();
+        $config = $db->getConfig();
 
         $dbName = $config['name'];
         $tableName = str_replace(array("'", "`"), '', $name);
@@ -39,13 +39,13 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
         $this->name = $tableName;
         $this->fullName  = $dbName.$tableName;
-        $this->queryName  = "`".trim($conn->quote($dbName), "'")."`.";
-        $this->queryName .= "`".trim($conn->quote($tableName), "'")."`";
+        $this->queryName  = "`".trim($this->conn->quote($dbName), "'")."`.";
+        $this->queryName .= "`".trim($this->conn->quote($tableName), "'")."`";
 
         try {
             $sql  = "SHOW TABLE STATUS FROM ";
-            $sql .= "`".trim($conn->quote($dbName), "'")."` LIKE ?;";
-            $stmt = $conn->prepare($sql);
+            $sql .= "`".trim($this->conn->quote($dbName), "'")."` LIKE ?;";
+            $stmt = $this->conn->prepare($sql);
             if ($stmt->execute(array($this->name), null, true)) {
                 $raw = $stmt->fetch(\PDO::FETCH_ASSOC);
                 if (empty($raw)) {
@@ -93,7 +93,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
 
                 $sql  = "SHOW FULL COLUMNS FROM ".$this->queryName.";";
-                if ($query = $conn->query($sql, null, true)) {
+                if ($query = $this->conn->query($sql, null, true)) {
                     if (!$query->rowCount()) {
                         throw new \Exception(sprintf('Table "%s" has no columns.', $tableName));
                     }
@@ -101,7 +101,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
                     $requires = $primaries = $indicies = array();
                     while($val = $query->fetch(\PDO::FETCH_ASSOC)) {
                         $column = new \Kijtra\DB\Column($this, $val);
-                        self::$columns[$column['name']] = $column;
+                        $this->columns[$column['name']] = $column;
 
                         if ($column['require']) {
                             $requires[] = $column['name'];
@@ -163,9 +163,9 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function getColumns($key = null)
     {
         if (empty($key)) {
-            return self::$columns;
-        } elseif (!empty(self::$columns[$key])) {
-            return self::$columns[$key];
+            return $this->columns;
+        } elseif (!empty($this->columns[$key])) {
+            return $this->columns[$key];
         }
     }
 
@@ -173,12 +173,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
     {
         $args = func_get_args();
         $num = func_num_args();
-        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
-            self::$columns[$args[0]]->setValue($args[1]);
+        if (2 == $num && is_string($args[0]) && !empty($this->columns[$args[0]])) {
+            $this->columns[$args[0]]->setValue($args[1]);
         } elseif(is_array($values)) {
             foreach($values as $column => $val) {
-                if (!empty(self::$columns[$column])) {
-                    self::$columns[$column]->setValue($val);
+                if (!empty($this->columns[$column])) {
+                    $this->columns[$column]->setValue($val);
                 }
             }
         }
@@ -189,12 +189,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
     public function getValues($key = null)
     {
         if (is_string($key)) {
-            if (!empty(self::$columns[$key]) && self::$columns[$key]->hasValue()) {
-                return self::$columns[$key]->getValue();
+            if (!empty($this->columns[$key]) && $this->columns[$key]->hasValue()) {
+                return $this->columns[$key]->getValue();
             }
         } else {
             $values = array();
-            foreach(self::$columns as $column) {
+            foreach($this->columns as $column) {
                 if (!$column->hasValue()) {
                     continue;
                 }
@@ -207,8 +207,8 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
     public function clearValues()
     {
-        foreach(self::$columns as $key => $column) {
-            self::$columns[$key]->removeValue();
+        foreach($this->columns as $key => $column) {
+            $this->columns[$key]->removeValue();
         }
 
         return $this;
@@ -216,8 +216,8 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
     public function clearAll()
     {
-        foreach(self::$columns as $key => $column) {
-            self::$columns[$key]->removeValue()->removeFormatter()->removeValidator();
+        foreach($this->columns as $key => $column) {
+            $this->columns[$key]->removeValue()->removeFormatter()->removeValidator();
         }
 
         return $this;
@@ -227,12 +227,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
     {
         $args = func_get_args();
         $num = func_num_args();
-        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
-            self::$columns[$args[0]]->setFormatter($args[1]);
+        if (2 == $num && is_string($args[0]) && !empty($this->columns[$args[0]])) {
+            $this->columns[$args[0]]->setFormatter($args[1]);
         } elseif(is_array($values)) {
             foreach($values as $column => $val) {
-                if (!empty(self::$columns[$column])) {
-                    self::$columns[$column]->setFormatter($val);
+                if (!empty($this->columns[$column])) {
+                    $this->columns[$column]->setFormatter($val);
                 }
             }
         }
@@ -244,12 +244,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
     {
         $args = func_get_args();
         $num = func_num_args();
-        if (2 == $num && is_string($args[0]) && !empty(self::$columns[$args[0]])) {
-            self::$columns[$args[0]]->setValidator($args[1]);
+        if (2 == $num && is_string($args[0]) && !empty($this->columns[$args[0]])) {
+            $this->columns[$args[0]]->setValidator($args[1]);
         } elseif(is_array($values)) {
             foreach($values as $column => $val) {
-                if (!empty(self::$columns[$column])) {
-                    self::$columns[$column]->setValidator($val);
+                if (!empty($this->columns[$column])) {
+                    $this->columns[$column]->setValidator($val);
                 }
             }
         }
@@ -264,7 +264,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
         }
 
         $results = array();
-        foreach(self::$columns as $column) {
+        foreach($this->columns as $column) {
             if (!$column->hasValue() || !$column->hasValidator()) {
                 continue;
             }
@@ -279,8 +279,8 @@ class Table implements \ArrayAccess, \IteratorAggregate
 
     public Function getLastId()
     {
-        if (!empty(self::$lastId)) {
-            return self::$lastId;
+        if (!empty($this->lastId)) {
+            return $this->lastId;
         }
     }
 
@@ -337,11 +337,11 @@ class Table implements \ArrayAccess, \IteratorAggregate
             if ($stmt->execute(array_values($values))) {
                 $lastId = $this->conn->lastInsertId();
                 if (!empty($lastId)) {
-                    self::$lastId = $lastId;
+                    $this->lastId = $lastId;
 
                     if (!empty($callback)) {
-                        $callback = $callback->bindTo($this);
-                        $callback(self::$lastId);
+                        $callback = $callback->bindTo($this->db);
+                        $callback($this->lastId);
                     }
                 }
 
