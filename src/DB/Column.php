@@ -88,7 +88,11 @@ class Column implements \ArrayAccess, \IteratorAggregate
 
     public function setValue($value)
     {
-        $this->value = $value;
+        if (is_array($value)) {
+            $this->value = new \Kijtra\DB\Values($value);
+        } else {
+            $this->value = $value;
+        }
     }
 
     public function getValue()
