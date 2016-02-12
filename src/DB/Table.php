@@ -324,11 +324,12 @@ class Table implements \ArrayAccess, \IteratorAggregate
         $sql[] = "ON DUPLICATE KEY UPDATE";
         $updates = array();
         foreach($values as $key => $val) {
-            if ($key == $onlyPrimary) {
-                $updates[] = "`{$key}`=LAST_INSERT_ID(`{$key}`)";
-            } else {
+            if ($key != $onlyPrimary) {
                 $updates[] = "`{$key}`=VALUES(`{$key}`)";
             }
+        }
+        if (!empty($onlyPrimary)) {
+            $updates[] = "`{$onlyPrimary}`=LAST_INSERT_ID(`{$onlyPrimary}`)";
         }
         $sql = implode(PHP_EOL, $sql).PHP_EOL.implode(",".PHP_EOL, $updates).";";
 
