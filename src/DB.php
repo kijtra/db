@@ -124,6 +124,18 @@ class DB
     }
 
     /**
+     * Current DB Name getter
+     *
+     * @return string  DB Name
+     */
+    public function getCurrentDb()
+    {
+        if ($conn = $this->getConnection()) {
+            return $conn->query("SELECT DATABASE()")->fetchColumn();
+        }
+    }
+
+    /**
      * Get Database Table info object
      *
      * @param string  $name  Table Name
@@ -241,6 +253,17 @@ class DB
      */
     public function __call($method, $args)
     {
+        if ('use' === strtolower($method)) {
+            if (!empty($args[0]) && is_string($args[0])) {
+                $this->conn->exec("USE `{$args[0]}`;");
+                return $this;
+            } else {
+                throw new \PDOException("Invalid Database name");
+            }
+        } elseif (!method_exists($this->conn, $method)) {
+            throw new \PDOException(sprintf("Call to undefined method '%s'", $method));
+        }
+
         $len = count($args);
         if (0 === $len) {
             return $this->conn->$method();

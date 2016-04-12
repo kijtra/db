@@ -27,7 +27,7 @@ class Table implements \ArrayAccess, \IteratorAggregate
         $this->conn = $db->getConnection();
         $config = $db->getConfig();
 
-        $dbName = $config['name'];
+        $dbName = $this->conn->query("SELECT DATABASE()")->fetchColumn();
         $tableName = str_replace(array("'", "`"), '', $name);
         $tableName = explode('.', $tableName);
         if (!empty($tableName[1])) {
