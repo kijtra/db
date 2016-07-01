@@ -1,5 +1,5 @@
 <?php
-include(__DIR__.'/src/functions.php');
+include(__DIR__.'/src/function.php');
 
 spl_autoload_register(function($className) {
     $prefix = 'Kijtra\\';

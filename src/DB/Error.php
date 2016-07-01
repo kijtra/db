@@ -1,7 +1,7 @@
 <?php
 namespace Kijtra\DB;
 
-class History implements \IteratorAggregate, \Serializable
+class Error implements \IteratorAggregate
 {
     /**
      * Container object
@@ -12,13 +12,13 @@ class History implements \IteratorAggregate, \Serializable
     private $container;
 
     /**
-     * History datas
+     * Error datas (PDOException objects)
      * @var array
      */
     private $data = array();
 
     /**
-     * Create new History object
+     * Create new Error object
      *
      * @param object $container Container object
      */
@@ -30,19 +30,19 @@ class History implements \IteratorAggregate, \Serializable
     }
 
     /**
-     * Add history data
-     * @param string $sql   SQL string
-     * @param array  $binds binded data
+     * Add Error data
+     * @param object $e Exception object
      */
-    public function add($sql, $binds = array())
+    public function add($e)
     {
-        $max = $this->container->config['history_max'];
+        if (!$e instanceof \PDOException || !$e instanceof \Exception) {
+            return;
+        }
+
+        $max = $this->container->config['error_max'];
 
         if (!empty($max)) {
-            array_unshift($this->data, array(
-                'sql' => $sql,
-                'bind' => $binds,
-            ));
+            array_unshift($this->data, $e);
 
             if (count($this->data) > $max) {
                 array_pop($this->data);
@@ -51,8 +51,8 @@ class History implements \IteratorAggregate, \Serializable
     }
 
     /**
-     * Get all history data
-     * @return array history datas
+     * Get all error data
+     * @return array Error datas (PDOException objects)
      */
     public function get()
     {
@@ -69,25 +69,8 @@ class History implements \IteratorAggregate, \Serializable
     }
 
     /**
-     * Data serialize
-     * @return string serialized data
-     */
-    public function serialize()
-    {
-        return serialize($this->data);
-    }
-
-    /**
-     * Data unserialize (not support)
-     * @param array $data
-     */
-    public function unserialize($data)
-    {
-    }
-
-    /**
      * For var_dump
-     * @return array History datas
+     * @return array Error datas
      */
     public function __debugInfo()
     {

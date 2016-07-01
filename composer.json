@@ -18,7 +18,7 @@
         "kijtra/db": "Simple PDO wrapper"
     },
     "autoload": {
-        "files": ["src/functions.php"],
+        "files": ["src/function.php"],
         "psr-4": {
             "Kijtra\\": "src/"
         }

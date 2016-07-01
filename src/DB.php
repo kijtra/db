@@ -8,287 +8,165 @@
  */
 namespace Kijtra;
 
+use Kijtra\DB\Config;
+use Kijtra\DB\Container;
+
 /**
  * DB
  *
  * This is the primary class with which you instantiate,
  * configure, and run a Kijtra/DB application.
- *
- * Usage same of PDO constructor (http://php.net/manual/ja/pdo.construct.php)
  */
 class DB
 {
-    /**
-     * History object
-     *
-     * @access private
-     * @var History
-     */
-    private $history;
+    private static $storage;
+    private $pdo;
 
     /**
-     * Config object
-     *
-     * @access private
-     * @var Config
+     * Create DB instance
+     * @param mixed Config params
      */
-    private $config;
-
-    /**
-     * PDO connection object
-     *
-     * @access private
-     * @var object
-     */
-    private $conn;
-
-    /**
-     * Loaded table objects
-     *
-     * @access private
-     * @var array
-     */
-    private static $tables = array();
-
-    /**
-     * Singleton object optional use
-     *
-     * @access private
-     * @var object
-     */
-    private static $singleton;
-
-    /**
-     * Create new object
-     *
-     * @param string|array  $dsn  Data Source Name or database config array
-     * @param string  $username  Database Username
-     * @param string  $password  Database Password
-     * @param string  $options  PDO driver option
-     * @throws PDOException when Database connect failed
-     */
-    public function __construct($dsn, $username = null, $password = null, $options = null)
+    public function __construct()
     {
-        $this->history = new \Kijtra\DB\History();
-        $this->config = new \Kijtra\DB\Config($dsn, $username, $password);
-        $this->conn = new \Kijtra\DB\Connection(
-            $this->config['dsn'],
-            $this->config['user'],
-            $this->config['pass'],
-            $options,
-            $this->config,
-            $this->history
-        );
+        if (null === self::$storage) {
+            self::$storage = new \SplObjectStorage();
+        }
 
-        $this->conn->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
-            __NAMESPACE__.'\\DB\\Statement',
-            array($this->history)
-        ));
-    }
+        $args = func_get_args();
+        $len = count($args);
 
-    /**
-     * Config getter
-     *
-     * @param string  $key  Config array key
-     * @return mixed  If pass $key return one, else all config data
-     */
-    public function getConfig($key = null)
-    {
-        if (isset($key)) {
-            if ($this->config->offsetExists($key)) {
-                return $this->config->offsetGet($key);
-            }
+        if (1 === $len && $args[0] instanceof \PDO) {
+            $this->pdo = $args[0];
+            $database = $this->pdo->query('SELECT DATABASE()')->fetchColumn();
+            $process = $this->pdo->query('SHOW PROCESSLIST;')->fetch(\PDO::FETCH_ASSOC);
+            $config = new Config(array(
+                'host' => substr($process['Host'], 0, strpos($process['Host'], ':')),
+                'database' => $database,
+                'username' => $process['User'],
+            ));
+            $container = new Container($this, $config);
+            self::$storage[$this->pdo] = $container;
+            $this->pdo->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
+                __NAMESPACE__.'\\DB\\Statement',
+                array($container),
+            ));
         } else {
-            return $this->config->all();
+            $config = new Config();
+            if (1 === $len) {
+                $config->set($args[0]);
+            } elseif (2 === $len) {
+                $config->set($args[0], $args[1]);
+            } elseif (3 === $len) {
+                $config->set($args[0], $args[1], $args[3]);
+            } else {
+                call_user_func_array(array($config, 'set'), $args);
+            }
+
+            if ($pdo = $this->db($config->dsn, $config->username, $config->password, $config->options)) {
+                $container = new Container($this, $config);
+                self::$storage[$pdo] = $container;
+                $pdo->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array(
+                    __NAMESPACE__.'\\DB\\Statement',
+                    array($container),
+                ));
+            };
         }
     }
 
     /**
-     * Connection getter
-     *
-     * @return object  DB Connection object
+     * Get PDO instance
+     * @param  string $dsn     Data Source Name
+     * @param  string $user    Username
+     * @param  string $pass    Password
+     * @param  array  $options PDO Options
+     * @return object PDO instance
      */
-    public function getConnection()
+    public function db($dsn = null, $user = null, $pass = null, $options = array())
     {
-        return $this->conn;
-    }
-
-    /**
-     * Get Query history
-     *
-     * @return array  SQL sentense and Binded data in array
-     */
-    public function getHistory()
-    {
-        return $this->history->get();
-    }
-
-    /**
-     * Current DB Name getter
-     *
-     * @return string  DB Name
-     */
-    public function getCurrentDb()
-    {
-        if ($conn = $this->getConnection()) {
-            return $conn->query("SELECT DATABASE()")->fetchColumn();
-        }
-    }
-
-    /**
-     * Get Database Table info object
-     *
-     * @param string  $name  Table Name
-     * @return object  Table data object
-     */
-    public function getTable($name)
-    {
-        $dbname = $this->config['name'];
-        if (!empty(self::$tables[$name])) {
-            return self::$tables[$name];
-        } elseif (!empty(self::$tables[$dbname.$name])) {
-            return self::$tables[$dbname.$name];
-        }
-
-        $table = new \Kijtra\DB\Table($name, $this);
-        $name = $table->name();
-        return self::$tables[$dbname.$name] = $table;
-    }
-
-    /**
-     * Get Table's Columns info object (shortcut)
-     *
-     * @param string  $name  Table Name
-     * @return array  Table's Columns info array
-     */
-    public function getColumns($name)
-    {
-        return $this->table($name)->columns();
-    }
-
-    /**
-     * DB/Flow runner
-     *
-     * Starting Flow object
-     *
-     * @param string  $sql  SQL sentence
-     * @return object  DB/Flow object
-     */
-    public function sql($sql)
-    {
-        $flow = new \Kijtra\DB\Flow($this->conn);
-        return $flow->sql($sql);
-    }
-
-    /**
-     * Singleton method
-     *
-     * Use singleton object at self
-     *
-     * @see __construct
-     */
-    public static function singleton()
-    {
-        if (null === self::$singleton) {
-            $ref = new \ReflectionClass(__CLASS__);
-            self::$singleton = $ref->newInstanceArgs(func_get_args());
-        } elseif(1 === func_num_args()) {
-            $args = func_get_args();
-            if (is_string($args[0])) {
-                self::$singleton->exec("USE `{$args[0]}`;");
+        if (null === $this->pdo) {
+            try {
+                $this->pdo = new \PDO($dsn, $user, $pass, $options);
+            } catch (\PDOException $e) {
+                throw $e;
             }
         }
 
-        return self::$singleton;
-    }
-
-
-    /********************************************************************************
-     * Aliases
-     *******************************************************************************/
-
-    /**
-     * @see getConfig
-     */
-    public function config($key = null)
-    {
-        return $this->getConfig($key);
+        return $this->pdo;
     }
 
     /**
-     * @see getHistory
+     * Get Query Histories
+     * @return array History array
      */
     public function history()
     {
-        return $this->getHistory();
+        if (!empty($this->pdo)) {
+            return self::$storage[$this->pdo]->history->get();
+        }
     }
 
     /**
-     * @see getTable
+     * Get Errors
+     * @return array Error array
      */
-    public function table($name)
+    public function error()
     {
-        return $this->getTable($name);
+        if (!empty($this->pdo)) {
+            return self::$storage[$this->pdo]->error->get();
+        }
     }
 
     /**
-     * @see getColumns
-     */
-    public function columns($name)
-    {
-        return $this->getColumns($name);
-    }
-
-
-    /********************************************************************************
-     * Overloads
-     *******************************************************************************/
-
-    /**
-     * Pass method to PDO object
-     *
-     * @param string  $method  PDO method name
-     * @param array  $args  PDO method arguments
-     * @return object  PDO method results
+     * Call PDO methods
+     * @param  string $method Method Name
+     * @param  array  $args   Method arguments
+     * @return mixed  PDO result
      */
     public function __call($method, $args)
     {
-        if ('use' === strtolower($method)) {
-            if (!empty($args[0]) && is_string($args[0])) {
-                $this->conn->exec("USE `{$args[0]}`;");
-                return $this;
+        if (!$pdo = $this->db()) {
+            throw new \Exception('PDO Not initialized.');
+        }
+
+        $container = self::$storage[$pdo];
+
+        if (!method_exists($pdo, $method)) {
+            $exception = new \Exception(sprintf('Method "%s" not defined at PDO.', $method));
+            $container->error->add($exception);
+            if (!$container->config['silent']) {
+                throw $exception;
             } else {
-                throw new \PDOException("Invalid Database name");
+                return $this;
             }
-        } elseif (!method_exists($this->conn, $method)) {
-            throw new \PDOException(sprintf("Call to undefined method '%s'", $method));
         }
 
-        $len = count($args);
-        if (0 === $len) {
-            return $this->conn->$method();
-        } elseif(1 === $len) {
-            return $this->conn->$method($args[0]);
-        } elseif(2 === $len) {
-            return $this->conn->$method($args[0], $args[1]);
-        } elseif(3 === $len) {
-            return $this->conn->$method($args[0], $args[1], $args[2]);
-        } elseif(4 === $len) {
-            return $this->conn->$method($args[0], $args[1], $args[2], $args[3]);
-        } elseif(5 === $len) {
-            return $this->conn->$method($args[0], $args[1], $args[2], $args[3], $args[4]);
-        } else {
-            return call_user_func_array(array($this->conn, $method), $args);
-        }
-    }
+        try {
+            if (empty($args)) {
+                return $pdo->$method();
+            } else {
+                $len = count($args);
 
-    /**
-     * var_dump checker for Developer
-     *
-     * @return object  PDO object
-     */
-    public function __debugInfo()
-    {
-        return $this->conn;
+                if ('exec' === $method || 'query' === $method) {
+                    call_user_func_array(array($container->history, 'add'), $args);
+                }
+
+                if (1 === $len) {
+                    return $pdo->$method($args[0]);
+                } elseif (2 === $len) {
+                    return $pdo->$method($args[0], $args[1]);
+                } elseif (3 === $len) {
+                    return $pdo->$method($args[0], $args[1], $args[3]);
+                } else {
+                    return call_user_func_array(array($pdo, $method), $args);
+                }
+            }
+        } catch (\PDOException $e) {
+            $container->error->add($e);
+            if (!$container->config['silent']) {
+                throw $e;
+            } else {
+                return $this;
+            }
+        }
     }
 }

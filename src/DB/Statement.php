@@ -8,6 +8,8 @@
  */
 namespace Kijtra\DB;
 
+use Kijtra\DB\Container;
+
 /**
  * DB/Statement
  *
@@ -16,12 +18,12 @@ namespace Kijtra\DB;
 class Statement extends \PDOStatement
 {
     /**
-     * History object
+     * Container object
      *
      * @access private
-     * @var History
+     * @var Container
      */
-    private $history;
+    private $container;
 
     /**
      * Binded data buffer
@@ -34,12 +36,12 @@ class Statement extends \PDOStatement
     /**
      * Create new PDOStatement object
      *
-     * @param string  $history  Pass History object
+     * @param @param object $container Container object
      */
-    protected function __construct($history = null)
+    protected function __construct($container = null)
     {
-        if ($history instanceof \Kijtra\DB\History) {
-            $this->history = $history;
+        if (!empty($container) && $container instanceof Container) {
+            $this->container = & $container;
         }
     }
 
@@ -48,16 +50,16 @@ class Statement extends \PDOStatement
      *
      * Buffering bind datas
      *
-     * @param string  $param  Parameter identifier
-     * @param string  $value  Variable to bind to the SQL statement parameter
-     * @param string  $type  Explicit data type for the parameter using the PDO::PARAM_* constants
-     * @param string  $length  Length of the data type
-     * @param string  $options  Driver options
+     * @param string $param   Parameter identifier
+     * @param string $value   Variable to bind to the SQL statement parameter
+     * @param string $type    Explicit data type for the parameter using the PDO::PARAM_* constants
+     * @param string $length  Length of the data type
+     * @param string $options Driver options
      */
     public function bindParam($param, &$value, $type = \PDO::PARAM_STR, $length = null, $options = null)
     {
         $this->binds[] = $value;
-        parent::bindParam($param, $value, $type, $length, $options);
+        return parent::bindParam($param, $value, $type, $length, $options);
     }
 
     /**
@@ -65,9 +67,9 @@ class Statement extends \PDOStatement
      *
      * Buffering bind datas
      *
-     * @param string  $param  Parameter identifier
-     * @param string  $value  Variable to bind to the SQL statement parameter
-     * @param string  $type  Explicit data type for the parameter using the PDO::PARAM_* constants
+     * @param string $param Parameter identifier
+     * @param string $value Variable to bind to the SQL statement parameter
+     * @param string $type  Explicit data type for the parameter using the PDO::PARAM_* constants
      */
     public function bindValue($param, $value, $type = \PDO::PARAM_STR)
     {
@@ -78,35 +80,33 @@ class Statement extends \PDOStatement
     /**
      * PDOStatement execute() extend history and callback
      *
-     * @param array  $values  Variable to bind to the SQL statement parameter
-     * @param callable  $callback  callback function binded PDO object
-     * @param bool  $noLog  If true, History not add
-     * @return object  PDOStatement object
+     * @param  array    $values   Variable to bind to the SQL statement parameter
+     * @param  callable $callback callback function binded PDO object
+     * @param  bool     $noLog    If true, History not add
+     * @return object   PDOStatement object
      */
-    public function execute($values = array(), $callback = null, $noLog = false)
+    public function execute($values = array())
     {
-        $binds = $this->binds;
-        $this->binds = array();
-
-        if (!empty($values)) {
-            if (!$noLog) {
-                $this->history->set($this->queryString, $values);
-            }
-
-            $result =  parent::execute($values);
-        } else {
-            if (!$noLog) {
-                $this->history->set($this->queryString, $binds);
-            }
-
-            $result =  parent::execute();
+        if (empty($values)) {
+            $values = $this->binds;
+            $this->binds = array();
         }
 
-        if ($callback instanceof \Closure) {
-            $callback = $callback->bindTo($result);
-            $callback($result);
-        }
+        $this->container->history->add($this->queryString, $values);
 
-        return $result;
+        try {
+            if (!empty($values)) {
+                return parent::execute($values);
+            } else {
+                return parent::execute();
+            }
+        } catch (\PDOException $e) {
+            $this->container->error->add($e);
+            if (!$this->container->config['silent']) {
+                throw $e;
+            } else {
+                return $this;
+            }
+        }
     }
 }
